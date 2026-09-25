@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Admin Audit Logs — {{ vip_site_name }}{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/velohost.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="vh-root">
+  <div class="vh-shell">
+
+    {% set active = 'admin_logs' %}
+    {% include 'partials/vh_sidebar.html' %}
+    {% include 'partials/vh_admin_nav.html' %}
+
+    <div class="vh-main">
+      <header class="vh-topbar">
+        <div class="vh-row" style="gap:10px;">
+          <button class="vh-btn vh-btn-ghost vh-btn-sm vh-only-mobile" id="vh-menu-toggle" aria-label="Menu">☰</button>
+          <div>
+            <h1 class="vh-page-title">Audit Logs</h1>
+            <p class="vh-page-sub">Track administrative operations and balance adjustments</p>
+          </div>
+        </div>
+        <div class="vh-row"><a href="{{ url_for('admin_dashboard') }}" class="vh-btn vh-btn-sm">← Overview</a></div>
+      </header>
+
+      <div class="vh-content">
+
+
+  
+  
+
+  <!-- Logs Table Card -->
+  <div class="vip-card" style="padding: 20px;">
+    <div style="font-weight: 800; font-size: 1.1rem; color: var(--vh-text); margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
+      <span>📜</span> Recent Audit Records
+    </div>
+
+    {% if logs %}
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      {% for log in logs %}
+      <div style="display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; background: var(--vh-panel-2); border: 1px solid var(--border-light); border-radius: 12px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 0.75rem; font-weight: 800; background: rgba(79,125,243,0.12); color: #4F46E5; padding: 2px 8px; border-radius: 6px;">
+              {{ log.action }}
+            </span>
+            <span style="font-size: 0.85rem; font-weight: 700; color: var(--vh-text);">
+              by @{{ log.admin_username }}
+            </span>
+          </div>
+          <span style="font-size: 0.75rem; color: var(--vh-text-3); font-family: var(--font-mono);">
+            {{ log.created_at|format_datetime }}
+          </span>
+        </div>
+
+        <div style="font-size: 0.825rem; color: var(--vh-text-2); margin-top: 4px;">
+          <strong>Target:</strong> {{ log.target }}
+          {% if log.details %}
+          <span style="color: var(--vh-text-3);">• {{ log.details }}</span>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 30px; color: var(--vh-text-3);">
+      No audit logs recorded yet.
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  var sidebar = document.getElementById('vh-sidebar');
+  var scrim = document.getElementById('vh-scrim');
+  var toggle = document.getElementById('vh-menu-toggle');
+  if (toggle && sidebar) {
+    toggle.addEventListener('click', function () {
+      sidebar.classList.toggle('open');
+      if (scrim) scrim.classList.toggle('on');
+    });
+  }
+  if (scrim) {
+    scrim.addEventListener('click', function () {
+      sidebar.classList.remove('open');
+      scrim.classList.remove('on');
+    });
+  }
+})();
+</script>
+{% endblock %}
+

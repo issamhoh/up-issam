@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}Startup Settings — {{ server.name }} — {{ vip_site_name }}{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/velohost.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="vh-root">
+  <div class="vh-shell">
+
+    {% set active = 'startup' %}
+    {% include 'partials/vh_sidebar.html' %}
+
+    <div class="vh-main">
+      <header class="vh-topbar">
+        <div class="vh-row" style="gap:10px;">
+          <button class="vh-btn vh-btn-ghost vh-btn-sm vh-only-mobile" id="vh-menu-toggle" aria-label="Menu">☰</button>
+          <div>
+            <h1 class="vh-page-title">Startup Settings</h1>
+            <p class="vh-page-sub">Configure how {{ site_name }} boots and runs {{ server.name }}</p>
+          </div>
+        </div>
+        <div class="vh-row">
+          <span id="server-status-badge"
+                class="vh-chip {% if server.status == 'running' %}vh-chip-ok vh-chip-pulse{% elif server.status == 'package_required' %}vh-chip-warn{% else %}vh-chip-bad{% endif %}"
+                data-status="{{ server.status }}">
+            <span class="vh-chip-dot"></span>
+            <span class="vh-chip-text">{% if server.status == 'running' %}Running{% elif server.status == 'package_required' %}Packages needed{% elif server.status == 'expired' %}Expired{% else %}Stopped{% endif %}</span>
+          </span>
+        </div>
+      </header>
+
+      <div class="vh-content" style="max-width:760px;">
+
+        <div class="vh-panel">
+          <div class="vh-panel-head">
+            <div>
+              <h2 class="vh-panel-title">⚙️ Startup Configuration</h2>
+              <p class="vh-panel-note">Runtime version, entry file and crash recovery</p>
+            </div>
+          </div>
+          <div class="vh-panel-body">
+            <form action="{{ url_for('server_startup', server_id=server.id) }}" method="POST" style="display:flex;flex-direction:column;gap:16px;">
+
+              <div class="vh-field">
+                <div class="vh-row" style="justify-content:space-between;">
+                  <label for="python_version">Python Version</label>
+                  <button type="button" id="auto-detect-python" class="vh-btn vh-btn-sm">⚡ Auto Detect</button>
+                </div>
+                <select id="python_version" name="python_version" class="vh-select">
+                  <option value="Python 3.12" {% if server.python_version == 'Python 3.12' %}selected{% endif %}>Python 3.12 (High Performance)</option>
+                  <option value="Python 3.11" {% if server.python_version == 'Python 3.11' %}selected{% endif %}>Python 3.11</option>
+                  <option value="Python 3.10" {% if server.python_version == 'Python 3.10' %}selected{% endif %}>Python 3.10 (Recommended)</option>
+                  <option value="Python 3.9" {% if server.python_version == 'Python 3.9' %}selected{% endif %}>Python 3.9</option>
+                  <option value="Python 3.8" {% if server.python_version == 'Python 3.8' %}selected{% endif %}>Python 3.8</option>
+                </select>
+              </div>
+
+              <div class="vh-field">
+                <label for="entry_file">Main Startup Entry File</label>
+                <input type="text" id="entry_file" name="entry_file" class="vh-input vh-mono"
+                       value="{{ server.entry_file or detected_entry }}" placeholder="main.py" required>
+                <div class="vh-row" style="gap:6px;">
+                  <span class="vh-hint">Detected:</span>
+                  {% if py_files %}
+                    {% for f in py_files %}
+                      <button type="button" class="vh-btn vh-btn-sm vh-mono" data-entry="{{ f }}">{{ f }}</button>
+                    {% endfor %}
+                  {% else %}
+                    <span class="vh-hint" style="font-style:italic;">No .py files found yet (defaults to main.py)</span>
+                  {% endif %}
+                </div>
+              </div>
+
+              <div class="vh-field" style="border:1px solid var(--vh-border);border-radius:var(--vh-radius-sm);padding:13px;background:var(--vh-panel-2);">
+                <label class="vh-row" style="justify-content:space-between;cursor:pointer;">
+                  <div style="min-width:0;">
+                    <div style="font-weight:700;font-size:0.9rem;">Auto-Restart on Crash</div>
+                    <div class="vh-hint">Restart the process automatically if it exits unexpectedly.</div>
+                  </div>
+                  <input type="checkbox" name="auto_restart" value="true" {% if server.auto_restart %}checked{% endif %}
+                         style="width:20px;height:20px;accent-color:var(--vh-brand);cursor:pointer;flex-shrink:0;">
+                </label>
+              </div>
+
+              <div>
+                <button type="submit" class="vh-btn vh-btn-primary" style="padding:11px 24px;"
+                        {% if server.status == 'expired' %}disabled{% endif %}>💾 Save Startup Settings</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% include 'expired_modal.html' %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var sidebar = document.getElementById('vh-sidebar');
+  var scrim = document.getElementById('vh-scrim');
+  var toggle = document.getElementById('vh-menu-toggle');
+  if (toggle && sidebar) {
+    toggle.addEventListener('click', function () {
+      sidebar.classList.toggle('open');
+      if (scrim) scrim.classList.toggle('on');
+    });
+  }
+  if (scrim) {
+    scrim.addEventListener('click', function () {
+      sidebar.classList.remove('open');
+      scrim.classList.remove('on');
+    });
+  }
+
+  var detect = document.getElementById('auto-detect-python');
+  if (detect) {
+    detect.addEventListener('click', function () {
+      showToast('Detected Python 3.10+ runtime environment.', 'success');
+      var sel = document.getElementById('python_version');
+      var has310 = Array.prototype.some.call(sel.options, function (o) { return o.value === 'Python 3.10' && o.selected; });
+      if (!has310) sel.value = 'Python 3.10';
+    });
+  }
+
+  // Detected entry-file shortcuts (data attribute instead of inline JS string)
+  document.querySelectorAll('[data-entry]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      document.getElementById('entry_file').value = btn.dataset.entry;
+    });
+  });
+})();
+</script>
+{% endblock %}

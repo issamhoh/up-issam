@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+
+{% block title %}{{ server.name }} — Console — {{ vip_site_name }}{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/velohost.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="vh-root">
+  <div class="vh-shell">
+
+    {% set active = 'console' %}
+    {% include 'partials/vh_sidebar.html' %}
+
+    <div class="vh-main">
+      <header class="vh-topbar">
+        <div class="vh-row" style="gap:10px;">
+          <button class="vh-btn vh-btn-ghost vh-btn-sm vh-only-mobile" id="vh-menu-toggle" aria-label="Menu">☰</button>
+          <div>
+            <h1 class="vh-page-title">{{ server.name }}</h1>
+            <p class="vh-page-sub">Server #{{ server.id }} · <span class="vh-mono">{{ server.entry_file }}</span></p>
+          </div>
+        </div>
+        <div class="vh-row">
+          <span id="server-status-badge"
+                class="vh-chip {% if server.status == 'running' %}vh-chip-ok vh-chip-pulse{% elif server.status == 'package_required' %}vh-chip-warn{% else %}vh-chip-bad{% endif %}"
+                data-status="{{ server.status }}">
+            <span class="vh-chip-dot"></span>
+            <span class="vh-chip-text">{% if server.status == 'running' %}Running{% elif server.status == 'package_required' %}Packages needed{% elif server.status == 'expired' %}Expired{% else %}Stopped{% endif %}</span>
+          </span>
+          <a href="{{ url_for('file_manager', server_id=server.id) }}" class="vh-btn vh-btn-sm">📁 Files</a>
+          <button id="open-renew-modal" class="vh-btn vh-btn-sm">⏳ Extend</button>
+        </div>
+      </header>
+
+      <div class="vh-content">
+
+        <!-- ===== Control buttons ===== -->
+        <div class="vh-panel">
+          <div class="vh-panel-head">
+            <div>
+              <h2 class="vh-panel-title">⚡ Server Operations</h2>
+              <p class="vh-panel-note">Start, restart or stop the Python process</p>
+            </div>
+            <span id="server-pid-badge" class="vh-chip vh-mono" data-running="{{ '1' if server.status == 'running' and server.pid else '0' }}">PID: {{ server.pid if (server.status == 'running' and server.pid) else 'Offline' }}</span>
+          </div>
+          <div class="vh-panel-body">
+            <div class="vh-grid-2" style="grid-template-columns:repeat(3,1fr);gap:9px;">
+              <button id="btn-start-server" class="vh-btn vh-btn-primary" style="padding:12px;font-size:0.9rem;"
+                      {% if server.status == 'running' or server.status == 'expired' %}disabled{% endif %}>🟢 START</button>
+              <button id="btn-restart-server" class="vh-btn" style="padding:12px;font-size:0.9rem;"
+                      {% if server.status == 'expired' %}disabled{% endif %}>🟠 RESTART</button>
+              <button id="btn-stop-server" class="vh-btn vh-btn-danger" style="padding:12px;font-size:0.9rem;"
+                      {% if server.status in ['stopped', 'package_required', 'expired'] %}disabled{% endif %}>🔴 STOP</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== Live logs ===== -->
+        <div class="vh-panel">
+          <div class="vh-panel-head">
+            <div class="vh-row" style="gap:8px;">
+              <span style="font-size:1.05rem;">📜</span>
+              <div>
+                <h2 class="vh-panel-title">Live Logs</h2>
+                <p class="vh-panel-note">Streaming every 2.5 seconds</p>
+              </div>
+            </div>
+            <button id="clear-logs-btn" class="vh-btn vh-btn-sm">🧹 Clear</button>
+          </div>
+          <div class="vh-panel-body">
+            <div id="live-terminal" class="vh-terminal">
+              <div class="log-line log-info">[INFO] Connecting to {{ site_name }} log streaming engine…</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== Metadata ===== -->
+        <div class="vh-stats">
+          <div class="vh-stat">
+            <span class="vh-stat-label">Entry File</span>
+            <span class="vh-stat-value vh-mono" style="font-size:1.05rem;">{{ server.entry_file }}</span>
+            <span class="vh-stat-note">Python {{ server.python_version }}</span>
+          </div>
+          <div class="vh-stat" id="status-uptime-card">
+            <span class="vh-stat-label">Status / Uptime</span>
+            <span class="vh-stat-value" style="font-size:1.05rem;display:flex;align-items:center;gap:8px;">
+              <span id="card-status-dot" style="width:10px;height:10px;border-radius:50%;flex-shrink:0;background:{% if server.status == 'running' %}var(--vh-ok){% else %}var(--vh-bad){% endif %};"></span>
+              <span id="card-status-text" style="color:{% if server.status == 'running' %}var(--vh-ok){% else %}var(--vh-bad){% endif %};">{% if server.status == 'running' %}Running{% else %}Offline{% endif %}</span>
+            </span>
+            <span class="vh-stat-note vh-mono" id="card-uptime-counter">00:00:00</span>
+          </div>
+          <div class="vh-stat">
+            <span class="vh-stat-label">Remaining</span>
+            <span class="vh-stat-value">{{ remaining_days }} Days</span>
+            <span class="vh-stat-note">Auto-restart: {{ 'on' if server.auto_restart else 'off' }}</span>
+          </div>
+          <div class="vh-stat">
+            <span class="vh-stat-label">Expires On</span>
+            <span class="vh-stat-value" style="font-size:1.05rem;">{{ server.expires_at|format_datetime }}</span>
+            <span class="vh-stat-note">Created {{ server.created_at|format_date }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Renew modal ===== -->
+  <div class="vh-modal" id="renew-modal">
+    <div class="vh-modal-card">
+      <div class="vh-modal-head">
+        <h3 class="vh-modal-title">⏳ Extend Server Duration</h3>
+        <button class="vh-modal-close" id="renew-close" aria-label="Close">×</button>
+      </div>
+      <div class="vh-modal-body">
+        <p class="vh-hint" style="margin:0;">
+          Current expiration: <strong>{{ server.expires_at|format_datetime }}</strong> ·
+          Balance: <strong class="user-coin-val">{{ current_user.coins }}</strong> coins
+        </p>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          {% for p in packages %}
+          <label class="vh-row" style="gap:10px;padding:11px;border:1px solid var(--vh-border);border-radius:var(--vh-radius-sm);cursor:pointer;background:var(--vh-panel-2);">
+            <input type="radio" name="renew_package_id" value="{{ p.id }}" {% if loop.first %}checked{% endif %} style="accent-color:var(--vh-brand);">
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:700;font-size:0.88rem;">+{{ p.days }} Days</div>
+              <div class="vh-muted" style="font-size:0.75rem;">{{ p.name }}</div>
+            </div>
+            <span class="vh-chip vh-chip-info">{{ p.coins }} 🪙</span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="vh-modal-foot">
+        <button class="vh-btn" id="renew-cancel">Cancel</button>
+        <button class="vh-btn vh-btn-primary" id="confirm-renew-btn">Confirm &amp; Deduct Coins</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Missing entry file modal ===== -->
+  <div class="vh-modal" id="no-entry-modal">
+    <div class="vh-modal-card" style="max-width:400px;text-align:center;">
+      <div class="vh-modal-head" style="justify-content:center;">
+        <h3 class="vh-modal-title">⚠️ Entry File Missing</h3>
+      </div>
+      <div class="vh-modal-body" style="text-align:center;">
+        <p class="vh-hint" style="margin:0;">Upload your project files and a Python entry file before starting this server.</p>
+      </div>
+      <div class="vh-modal-foot" style="justify-content:center;">
+        <button class="vh-btn" id="no-entry-close">Close</button>
+        <a href="{{ url_for('file_manager', server_id=server.id) }}" class="vh-btn vh-btn-primary">📁 Upload Files</a>
+      </div>
+    </div>
+  </div>
+
+  {% include 'expired_modal.html' %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var SERVER_ID = {{ server.id }};
+  var HAS_ENTRY = {{ 'true' if scan and scan.has_entry_file else 'false' }};
+
+  /* sidebar */
+  var sidebar = document.getElementById('vh-sidebar');
+  var scrim = document.getElementById('vh-scrim');
+  var toggle = document.getElementById('vh-menu-toggle');
+  if (toggle && sidebar) {
+    toggle.addEventListener('click', function () {
+      sidebar.classList.toggle('open');
+      if (scrim) scrim.classList.toggle('on');
+    });
+  }
+  if (scrim) {
+    scrim.addEventListener('click', function () {
+      sidebar.classList.remove('open');
+      scrim.classList.remove('on');
+    });
+  }
+
+  /* control buttons */
+  document.getElementById('btn-start-server').addEventListener('click', function () {
+    if (!HAS_ENTRY) {
+      document.getElementById('no-entry-modal').classList.add('open');
+      return;
+    }
+    executeServerAction(SERVER_ID, 'start');
+  });
+  document.getElementById('btn-restart-server').addEventListener('click', function () {
+    executeServerAction(SERVER_ID, 'restart');
+  });
+  document.getElementById('btn-stop-server').addEventListener('click', function () {
+    executeServerAction(SERVER_ID, 'stop');
+  });
+  document.getElementById('clear-logs-btn').addEventListener('click', function () { clearLogs(SERVER_ID); });
+  document.getElementById('no-entry-close').addEventListener('click', function () {
+    document.getElementById('no-entry-modal').classList.remove('open');
+  });
+
+  /* renew modal */
+  var renewModal = document.getElementById('renew-modal');
+  document.getElementById('open-renew-modal').addEventListener('click', function () { renewModal.classList.add('open'); });
+  document.getElementById('renew-close').addEventListener('click', function () { renewModal.classList.remove('open'); });
+  document.getElementById('renew-cancel').addEventListener('click', function () { renewModal.classList.remove('open'); });
+  renewModal.addEventListener('click', function (e) { if (e.target === renewModal) renewModal.classList.remove('open'); });
+
+  document.getElementById('confirm-renew-btn').addEventListener('click', async function () {
+    var selected = document.querySelector('input[name="renew_package_id"]:checked');
+    if (!selected) return;
+    var btn = this;
+    btn.disabled = true;
+    btn.textContent = 'Extending…';
+    try {
+      var res = await fetch('/api/servers/' + SERVER_ID + '/renew', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ package_id: selected.value })
+      });
+      var data = await res.json();
+      if (data.success) {
+        showToast(data.message, 'success');
+        renewModal.classList.remove('open');
+        setTimeout(function () { location.reload(); }, 1200);
+      } else {
+        showToast(data.message || 'Renewal failed.', 'danger');
+      }
+    } catch (err) {
+      showToast('Error extending server.', 'danger');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Confirm & Deduct Coins';
+    }
+  });
+
+  /* live logs + uptime */
+  document.addEventListener('DOMContentLoaded', function () {
+    startLiveLogs(SERVER_ID, '{{ server.status }}', {{ start_time or 0 }});
+  });
+})();
+</script>
+{% endblock %}

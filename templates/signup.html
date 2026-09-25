@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Create Account — {{ vip_site_name }}{% endblock %}
+
+{% block head_extra %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/velohost.css') }}">
+{% endblock %}
+
+{% block content %}
+{% include "partials/vh_publicbar.html" %}
+<div class="vh-authwrap">
+  <div class="vh-auth-card">
+    <div class="vh-auth-brand">
+      <div class="vh-auth-logo">
+        <img src="{{ site_logo_url }}" alt="{{ site_name }}" width="54" height="54" style="max-width: 100%; max-height: 100%; object-fit: contain;" onerror="this.onerror=null;this.src='{{ url_for('static', filename='img/logo.svg') }}';">
+      </div>
+      <h1 class="vh-auth-title">Create Account</h1>
+      <p class="vh-auth-sub">Join {{ site_name }} and get instant free coins to deploy servers.</p>
+    </div>
+
+    <form action="{{ url_for('signup') }}" method="POST">
+      <div class="form-group">
+        <label class="form-label" for="full_name">Full Name</label>
+        <input type="text" id="full_name" name="full_name" class="form-control" placeholder="Full Name"
+               value="{{ full_name or '' }}" required autocomplete="name">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="username">Username</label>
+        <input type="text" id="username" name="username" class="form-control" placeholder="Host"
+               value="{{ username or '' }}" required autocomplete="username">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="email">Gmail Address</label>
+        <input type="email" id="email" name="email" class="form-control" placeholder="yourname@gmail.com"
+               value="{{ email or '' }}" required autocomplete="email">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="password">Password</label>
+        <input type="password" id="password" name="password" class="form-control" placeholder="••••••••"
+               required minlength="6" autocomplete="new-password">
+      </div>
+
+      <div class="form-group" style="margin-bottom: 24px;">
+        <label class="form-label" for="confirm_password">Confirm Password</label>
+        <input type="password" id="confirm_password" name="confirm_password" class="form-control" placeholder="••••••••"
+               required minlength="6" autocomplete="new-password">
+      </div>
+
+      <button type="submit" class="vh-btn vh-btn-primary vh-btn-block" style="padding: 12px;">Create Account</button>
+    </form>
+
+    <div class="vh-auth-switch">
+      Already have an account?
+      <a href="{{ url_for('signin') }}" class="vh-auth-link">Sign In</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

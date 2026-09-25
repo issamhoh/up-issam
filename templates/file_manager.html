@@ -1,0 +1,279 @@
+{% extends "base.html" %}
+
+{% block title %}Files — {{ server.name }} — {{ vip_site_name }}{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/velohost.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="vh-root" id="vh-root"
+     data-server-id="{{ server.id }}"
+     data-current-path="{{ current_path }}">
+
+  <div class="vh-shell">
+
+    {% set active = 'files' %}
+    {% include 'partials/vh_sidebar.html' %}
+
+    <!-- ============ MAIN ============ -->
+    <div class="vh-main">
+
+      <header class="vh-topbar">
+        <div class="vh-row" style="gap:10px;">
+          <button class="vh-btn vh-btn-ghost vh-btn-sm vh-only-mobile" id="vh-menu-toggle" aria-label="Menu">☰</button>
+          <div>
+            <h1 class="vh-page-title">File Manager</h1>
+            <p class="vh-page-sub">Server #{{ server.id }} · {{ server.name }} · entry: <span class="vh-mono">{{ server.entry_file }}</span></p>
+          </div>
+        </div>
+        <div class="vh-row">
+          {% if server.status == 'running' %}
+            <span class="vh-chip vh-chip-ok vh-chip-pulse"><span class="vh-chip-dot"></span> Running</span>
+          {% elif server.status == 'package_required' %}
+            <span class="vh-chip vh-chip-warn"><span class="vh-chip-dot"></span> Packages needed</span>
+          {% elif server.status == 'expired' %}
+            <span class="vh-chip vh-chip-bad"><span class="vh-chip-dot"></span> Expired</span>
+          {% else %}
+            <span class="vh-chip vh-chip-bad"><span class="vh-chip-dot"></span> Stopped</span>
+          {% endif %}
+          <a href="{{ url_for('server_manage', server_id=server.id) }}" class="vh-btn vh-btn-sm">📊 Logs</a>
+        </div>
+      </header>
+
+      <div class="vh-content">
+
+        <!-- ============ TOOLBAR ============ -->
+        <div class="vh-panel">
+          <div class="vh-toolbar">
+            <a href="{{ url_for('file_manager', server_id=server.id) }}" class="vh-btn vh-btn-sm" title="Server root">🏠 Root</a>
+            <div class="vh-toolbar-sep"></div>
+
+            <label class="vh-btn vh-btn-sm vh-btn-primary" for="fm-upload-input">📤 Upload Files</label>
+            <input type="file" id="fm-upload-input" multiple hidden>
+
+            <label class="vh-btn vh-btn-sm" for="fm-folder-input" title="Upload a whole folder from your device">📂 Upload Folder</label>
+            <input type="file" id="fm-folder-input" webkitdirectory directory multiple hidden>
+
+            <label class="vh-btn vh-btn-sm" for="fm-zip-input">📦 Upload ZIP</label>
+            <input type="file" id="fm-zip-input" accept=".zip" hidden>
+
+            <div class="vh-toolbar-sep"></div>
+
+            <button class="vh-btn vh-btn-sm" id="fm-new-folder">📁 New Folder</button>
+            <button class="vh-btn vh-btn-sm" id="fm-new-file">📄 New File</button>
+            <button class="vh-btn vh-btn-sm" id="fm-refresh">⟳ Refresh</button>
+
+            <div class="vh-toolbar-spacer"></div>
+
+            <div class="vh-search">
+              <span class="vh-muted">🔎</span>
+              <input type="search" id="fm-search" placeholder="Search files in this server…" autocomplete="off">
+            </div>
+          </div>
+
+          <div id="fm-search-results" class="vh-panel-body" style="display:none;padding:0;">
+            <div class="vh-table-wrap">
+              <table class="vh-table">
+                <thead><tr><th>Name</th><th>Path</th><th class="col-size">Size</th><th class="col-time">Modified</th></tr></thead>
+                <tbody id="fm-search-body"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- ============ BREADCRUMBS ============ -->
+          <nav class="vh-crumbs" aria-label="Breadcrumb">
+            <a href="{{ url_for('file_manager', server_id=server.id) }}">root</a>
+            {% for bc in breadcrumbs %}
+              <span class="sep">/</span>
+              {% if loop.last %}
+                <span class="cur">{{ bc.name }}</span>
+              {% else %}
+                <a href="{{ url_for('file_manager', server_id=server.id, path=bc.path) }}">{{ bc.name }}</a>
+              {% endif %}
+            {% endfor %}
+            <span class="vh-muted" style="margin-left:auto;font-weight:600;">
+              {{ dir_count }} folder{{ '' if dir_count == 1 else 's' }} · {{ file_count }} file{{ '' if file_count == 1 else 's' }}
+            </span>
+          </nav>
+
+          <!-- ============ SELECTION BAR ============ -->
+          <div class="vh-selbar" id="fm-selbar">
+            <span id="fm-sel-count">0 selected</span>
+            <div class="vh-toolbar-spacer"></div>
+            <button class="vh-btn vh-btn-sm" data-sel="download">⬇ Download as ZIP</button>
+            <button class="vh-btn vh-btn-sm" data-sel="copy">📋 Copy to…</button>
+            <button class="vh-btn vh-btn-sm" data-sel="move">➡ Move to…</button>
+            <button class="vh-btn vh-btn-sm" data-sel="compress">🗜 Compress</button>
+            <button class="vh-btn vh-btn-sm vh-btn-danger" data-sel="delete">🗑 Delete</button>
+            <button class="vh-btn vh-btn-sm vh-btn-ghost" data-sel="clear">✕ Clear</button>
+          </div>
+
+          <!-- ============ FILE TABLE ============ -->
+          <div class="vh-table-wrap">
+            <table class="vh-table" id="fm-table">
+              <thead>
+                <tr>
+                  <th class="col-check"><input type="checkbox" class="vh-check" id="fm-check-all" aria-label="Select all"></th>
+                  <th>Name</th>
+                  <th class="col-size">Size</th>
+                  <th class="col-time">Modified</th>
+                  <th class="col-act"></th>
+                </tr>
+              </thead>
+              <tbody id="fm-tbody">
+                {% if items %}
+                  {% for item in items %}
+                    {% set full_path = (current_path + '/' + item.name) if current_path else item.name %}
+                    <tr data-path="{{ full_path }}" data-name="{{ item.name }}"
+                        data-dir="{{ '1' if item.is_dir else '0' }}"
+                        data-zip="{{ '1' if item.is_zip else '0' }}"
+                        data-text="{{ '1' if item.is_text else '0' }}"
+                        {% if item.is_hidden %}style="opacity:.68;"{% endif %}>
+                      <td class="col-check">
+                        <input type="checkbox" class="vh-check fm-check" aria-label="Select {{ item.name }}">
+                      </td>
+                      <td>
+                        <div class="vh-file-name">
+                          {% if item.is_dir %}<span class="vh-file-ico dir">📁</span>
+                          {% elif item.is_zip %}<span class="vh-file-ico zip">🗜️</span>
+                          {% elif item.is_py %}<span class="vh-file-ico py">🐍</span>
+                          {% elif item.name.lower().endswith(('.png','.jpg','.jpeg','.gif','.svg','.webp')) %}<span class="vh-file-ico img">🖼️</span>
+                          {% elif item.name.lower().endswith(('.json','.yml','.yaml','.ini','.cfg','.toml')) %}<span class="vh-file-ico cfg">⚙️</span>
+                          {% elif item.name.lower().endswith(('.txt','.md','.log')) %}<span class="vh-file-ico txt">📝</span>
+                          {% else %}<span class="vh-file-ico txt">📄</span>{% endif %}
+
+                          {% if item.is_dir %}
+                            <a class="vh-file-link" href="{{ url_for('file_manager', server_id=server.id, path=full_path) }}">{{ item.name }}</a>
+                          {% elif item.is_text %}
+                            <button type="button" class="vh-file-link" data-act="edit">{{ item.name }}</button>
+                          {% else %}
+                            <span class="vh-file-link" style="cursor:default;">{{ item.name }}</span>
+                          {% endif %}
+
+                          {% if item.is_entry %}<span class="vh-tag vh-tag-entry">ENTRY</span>{% endif %}
+                          {% if item.is_link %}<span class="vh-tag">LINK</span>{% endif %}
+                        </div>
+                      </td>
+                      <td class="col-size">{{ item.size }}</td>
+                      <td class="col-time">{{ item.modified }}</td>
+                      <td class="col-act">
+                        <div class="vh-menu-wrap">
+                          <button class="vh-menu-btn" data-menu-toggle aria-label="Actions">⋯</button>
+                          <div class="vh-menu" data-menu>
+                            {% if item.is_dir %}
+                              <a class="vh-menu-item" href="{{ url_for('file_manager', server_id=server.id, path=full_path) }}"><span>📂</span> Open</a>
+                              <a class="vh-menu-item" href="{{ url_for('download_folder', server_id=server.id, path=full_path) }}"><span>⬇</span> Download as ZIP</a>
+                            {% else %}
+                              {% if item.is_text %}
+                                <button class="vh-menu-item" data-act="edit"><span>✏️</span> Open &amp; Edit</button>
+                              {% else %}
+                                <button class="vh-menu-item" data-act="view"><span>👁️</span> Preview</button>
+                              {% endif %}
+                              <a class="vh-menu-item" href="{{ url_for('download_file', server_id=server.id, path=full_path) }}"><span>⬇</span> Download</a>
+                            {% endif %}
+                            <div class="vh-menu-sep"></div>
+                            {% if item.is_zip %}
+                              <button class="vh-menu-item" data-act="unzip"><span>🗜️</span> Extract Here</button>
+                              <button class="vh-menu-item" data-act="unzip-into"><span>📂</span> Extract into Folder…</button>
+                            {% endif %}
+                            <button class="vh-menu-item" data-act="rename"><span>🏷️</span> Rename</button>
+                            <button class="vh-menu-item" data-act="copy"><span>📋</span> Copy to…</button>
+                            <button class="vh-menu-item" data-act="move"><span>➡</span> Move to…</button>
+                            <button class="vh-menu-item" data-act="compress"><span>🗜️</span> Compress</button>
+                            <div class="vh-menu-sep"></div>
+                            <button class="vh-menu-item danger" data-act="delete"><span>🗑</span> Delete</button>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                {% else %}
+                  <tr>
+                    <td colspan="5">
+                      <div class="vh-empty">
+                        <span class="vh-empty-ico">📂</span>
+                        <strong>This folder is empty</strong>
+                        <span>Upload files, a ZIP archive, or a whole folder to get started.</span>
+                      </div>
+                    </td>
+                  </tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <p class="vh-muted" style="font-size:0.74rem;margin:0;">
+          Tip: click a text file name to edit it inline. ZIP uploads are extracted automatically unless you use “Upload ZIP” and choose to keep the archive.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ UPLOAD PROGRESS ============ -->
+  <div class="vh-modal" id="upload-modal">
+    <div class="vh-modal-card" style="max-width:440px;">
+      <div class="vh-modal-head">
+        <h3 class="vh-modal-title" id="upload-modal-title">Uploading…</h3>
+      </div>
+      <div class="vh-modal-body">
+        <div class="vh-progress"><div class="vh-progress-bar" id="upload-bar"></div></div>
+        <div class="vh-progress-meta"><span id="upload-pct">0%</span><span id="upload-size">0 B / 0 B</span></div>
+        <p class="vh-hint" id="upload-status">Uploading to server…</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ GENERIC PROMPT MODAL ============ -->
+  <div class="vh-modal" id="prompt-modal">
+    <div class="vh-modal-card">
+      <div class="vh-modal-head">
+        <h3 class="vh-modal-title" id="prompt-title">Confirm</h3>
+        <button class="vh-modal-close" data-close-prompt aria-label="Close">×</button>
+      </div>
+      <div class="vh-modal-body">
+        <p class="vh-hint" id="prompt-hint" style="margin:0;"></p>
+        <div class="vh-field" id="prompt-field-wrap">
+          <label for="prompt-input" id="prompt-label">Value</label>
+          <input type="text" class="vh-input" id="prompt-input" autocomplete="off">
+        </div>
+      </div>
+      <div class="vh-modal-foot">
+        <button class="vh-btn" data-close-prompt>Cancel</button>
+        <button class="vh-btn vh-btn-primary" id="prompt-ok">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ EDITOR ============ -->
+  <div class="vh-modal" id="editor-modal">
+    <div class="vh-modal-card wide">
+      <div class="vh-modal-head">
+        <div style="min-width:0;">
+          <h3 class="vh-modal-title vh-truncate" id="editor-title">Editor</h3>
+          <p class="vh-panel-note" id="editor-meta">—</p>
+        </div>
+        <button class="vh-modal-close" id="editor-close" aria-label="Close">×</button>
+      </div>
+      <div class="vh-modal-body">
+        <textarea id="editor-content" class="vh-editor" spellcheck="false" autocomplete="off" wrap="off"></textarea>
+        <div class="vh-row" style="justify-content:space-between;">
+          <span class="vh-hint" id="editor-status">No unsaved changes</span>
+          <button class="vh-btn vh-btn-sm" id="editor-reload">↺ Reload from disk</button>
+        </div>
+      </div>
+      <div class="vh-modal-foot">
+        <button class="vh-btn" id="editor-cancel">Cancel</button>
+        <button class="vh-btn vh-btn-primary" id="editor-save">💾 Save (Ctrl+S)</button>
+      </div>
+    </div>
+  </div>
+
+  {% include 'expired_modal.html' %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/file_manager.js') }}"></script>
+{% endblock %}

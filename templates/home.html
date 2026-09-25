@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block title %}{{ vip_site_name }} — Python Hosting Platform{% endblock %}
+
+{% block head_extra %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/velohost.css') }}">
+{% endblock %}
+
+{% block content %}
+{% include "partials/vh_publicbar.html" %}
+<div class="vh-landing">
+  <div class="vh-landing-inner">
+
+    <!-- Hero -->
+    <section class="vh-hero" style="margin-top: 26px;">
+      <div class="vh-hero-chip"><span>&#128640;</span><span>PYTHON HOSTING PLATFORM</span></div>
+
+      <div class="vh-hero-logo">
+        <img src="{{ site_logo_url }}" alt="{{ site_name }} Logo" width="80" height="80" style="max-width: 100%; max-height: 100%; object-fit: contain;" onerror="this.onerror=null;this.src='{{ url_for('static', filename='img/logo.svg') }}';">
+      </div>
+
+      <h1><span class="vh-gradient-text">{{ vip_site_name }}</span></h1>
+      <p class="vh-hero-tagline">Fast &bull; Secure &bull; Powerful</p>
+      <p class="vh-hero-lede">
+        Deploy 24/7 Python bots, automation, scripts, and background services effortlessly
+        with real-time logs, live file management, and our daily coin reward economy.
+      </p>
+
+      <div class="vh-hero-actions">
+        {% if current_user %}
+          <a href="{{ url_for('dashboard') }}" class="vh-btn vh-btn-primary" style="padding: 13px 30px; font-size: 0.98rem;">&#9889; Enter Dashboard</a>
+          <a href="{{ url_for('create_server') }}" class="vh-btn" style="padding: 13px 26px;">+ Create New Server</a>
+        {% else %}
+          <a href="{{ url_for('signup') }}" class="vh-btn vh-btn-primary" style="padding: 13px 30px; font-size: 0.98rem;">Create Free Account &rarr;</a>
+          <a href="{{ url_for('signin') }}" class="vh-btn" style="padding: 13px 26px;">Sign In</a>
+        {% endif %}
+      </div>
+
+      <div class="vh-hero-stats">
+        <div>&#128994; 99.9% Uptime</div>
+        <div>&#9889; Python 3.8 - 3.12+</div>
+        <div>&#129290; Daily Coin Rewards</div>
+      </div>
+    </section>
+
+    <!-- Features -->
+    <section id="features" class="vh-section">
+      <div class="vh-section-head">
+        <h2 class="vh-section-title">Built for Python Creators</h2>
+        <p class="vh-section-sub">Everything you need to keep a Python project running around the clock.</p>
+      </div>
+
+      <div class="vh-feature-grid">
+        <div class="vh-feature">
+          <div class="vh-feature-ico tone-brand">&#9201;&#65039;</div>
+          <h3>24/7 Hosting</h3>
+          <p>Keep Telegram bots, Discord bots, schedulers, and background tasks active continuously with automatic process recovery.</p>
+        </div>
+
+        <div class="vh-feature">
+          <div class="vh-feature-ico tone-ok">&#127918;</div>
+          <h3>Easy Server Management</h3>
+          <p>Intuitive &#128994; START, &#128992; RESTART, and &#128994; STOP controls connected to our responsive Python process manager.</p>
+        </div>
+
+        <div class="vh-feature">
+          <div class="vh-feature-ico tone-pink">&#128274;</div>
+          <h3>Secure &amp; Private</h3>
+          <p>Every user runs in strict isolated server directories with sandboxed file managers, zip-slip defense, and encrypted credentials.</p>
+        </div>
+
+        <div class="vh-feature">
+          <div class="vh-feature-ico tone-warn">&#129290;</div>
+          <h3>Coin Reward Economy</h3>
+          <p>Claim 10 free coins every 24 hours. Use coins to deploy new servers or renew existing instances easily.</p>
+        </div>
+
+        <div class="vh-feature">
+          <div class="vh-feature-ico tone-ok">&#128230;</div>
+          <h3>Package Auto-Detect</h3>
+          <p>Auto-scan <code>requirements.txt</code> and install libraries with live progress feedback directly inside your control panel.</p>
+        </div>
+
+        <div class="vh-feature">
+          <div class="vh-feature-ico tone-violet">&#128220;</div>
+          <h3>Live Terminal Stream</h3>
+          <p>Monitor real-time stdout, stderr, and categorized logs with instant filtering and clear terminal controls.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Pricing -->
+    <section id="pricing" class="vh-section">
+      <div class="vh-section-head">
+        <h2 class="vh-section-title">Hosting Packages</h2>
+        <p class="vh-section-sub">Transparent coin-based hosting. No credit card required.</p>
+      </div>
+
+      <div class="vh-price-grid">
+        {% for pkg in packages %}
+        <div class="vh-price-card {% if pkg.is_first_time_offer %}is-featured{% endif %}">
+          {% if pkg.is_first_time_offer %}
+          <div class="vh-price-badge">&#9733; First Time Offer</div>
+          {% endif %}
+          <div>
+            <h3>{{ pkg.name }}</h3>
+            <p class="vh-price-desc">{{ pkg.description }}</p>
+
+            <div class="vh-price-amount">
+              <span class="vh-price-value">{{ pkg.coins }}</span>
+              <span class="vh-price-unit">Coins</span>
+              <span class="vh-price-term">/ {{ pkg.days }} Days</span>
+            </div>
+
+            <ul class="vh-price-list">
+              <li>&#10003; <strong>{{ pkg.days }} Days</strong> Continuous Runtime</li>
+              <li>&#10003; Real-time Terminal Logs</li>
+              <li>&#10003; Full ZIP &amp; File Manager</li>
+              <li>&#10003; Unlimited Restart Controls</li>
+            </ul>
+          </div>
+
+          <div>
+            {% if current_user %}
+            <a href="{{ url_for('create_server', pkg=pkg.id) }}" class="vh-btn vh-btn-primary vh-btn-block">Deploy with {{ pkg.coins }} Coins</a>
+            {% else %}
+            <a href="{{ url_for('signup') }}" class="vh-btn vh-btn-primary vh-btn-block">Get Started</a>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="vh-cta">
+      <h2>Ready to host your Python bot?</h2>
+      <p>Register now and receive instant welcome coins to launch your first 24/7 Python project immediately.</p>
+      {% if not current_user %}
+      <a href="{{ url_for('signup') }}" class="vh-btn vh-btn-primary" style="padding: 12px 28px;">Create Free Account &rarr;</a>
+      {% else %}
+      <a href="{{ url_for('create_server') }}" class="vh-btn vh-btn-primary" style="padding: 12px 28px;">Launch Server Now &rarr;</a>
+      {% endif %}
+    </section>
+
+  </div>
+</div>
+{% endblock %}

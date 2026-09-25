@@ -1,0 +1,58 @@
+{# VeloHost-style sidebar shell. Expects: active (string key), server (optional row). #}
+<aside class="vh-sidebar" id="vh-sidebar">
+  <div class="vh-brand">
+    {% if site_logo_url %}
+      <span class="vh-brand-mark" style="background:none;padding:0;">
+        <img src="{{ site_logo_url }}" alt="{{ site_name }}" style="width:34px;height:34px;border-radius:9px;object-fit:contain;"
+             onerror="this.onerror=null;this.style.display='none';">
+      </span>
+    {% else %}
+      <span class="vh-brand-mark">{{ (site_name or 'V')[0]|upper }}</span>
+    {% endif %}
+    <div style="min-width:0;">
+      <div class="vh-brand-name">{{ site_name }}</div>
+      <div class="vh-brand-sub">Control Panel</div>
+    </div>
+  </div>
+
+  <nav class="vh-nav">
+    <div class="vh-nav-label">Overview</div>
+    <a href="{{ url_for('dashboard') }}" class="vh-nav-item {% if active == 'dashboard' %}active{% endif %}"><span class="vh-ico">🏠</span> Dashboard</a>
+    <a href="{{ url_for('coins') }}" class="vh-nav-item {% if active == 'coins' %}active{% endif %}"><span class="vh-ico">🪙</span> Coins <span class="vh-badge">{{ current_user.coins if current_user else 0 }}</span></a>
+    <a href="{{ url_for('account') }}" class="vh-nav-item {% if active == 'account' %}active{% endif %}"><span class="vh-ico">👤</span> Account</a>
+
+    <div class="vh-nav-label">Hosting</div>
+    <a href="{{ url_for('packages') }}" class="vh-nav-item {% if active == 'packages' %}active{% endif %}"><span class="vh-ico">🖥️</span> My Servers</a>
+    <a href="{{ url_for('create_server') }}" class="vh-nav-item {% if active == 'create' %}active{% endif %}"><span class="vh-ico">➕</span> Deploy New</a>
+
+    {% if server %}
+    <div class="vh-nav-label">Server #{{ server.id }}</div>
+    <a href="{{ url_for('server_manage', server_id=server.id) }}" class="vh-nav-item {% if active == 'console' %}active{% endif %}"><span class="vh-ico">📊</span> Console</a>
+    <a href="{{ url_for('file_manager', server_id=server.id) }}" class="vh-nav-item {% if active == 'files' %}active{% endif %}"><span class="vh-ico">📁</span> File Manager</a>
+    <a href="{{ url_for('server_startup', server_id=server.id) }}" class="vh-nav-item {% if active == 'startup' %}active{% endif %}"><span class="vh-ico">⚙️</span> Startup</a>
+    {% endif %}
+
+    {% if is_admin %}
+    <div class="vh-nav-label">Administration</div>
+    <a href="{{ url_for('admin_dashboard') }}" class="vh-nav-item {% if active == 'admin' %}active{% endif %}"><span class="vh-ico">👑</span> Admin Panel</a>
+    {% endif %}
+  </nav>
+
+  <div class="vh-sidebar-foot">
+    <div class="vh-user">
+      <div class="vh-avatar">
+        {% if current_user and current_user.avatar_url %}
+          <img src="{{ current_user.avatar_url }}" alt="">
+        {% else %}
+          {{ (user_first_name or 'U')[0]|upper }}
+        {% endif %}
+      </div>
+      <div style="min-width:0;">
+        <div class="vh-truncate" style="font-size:0.82rem;font-weight:700;">{{ current_user.full_name if current_user else 'Guest' }}</div>
+        <div class="vh-truncate vh-muted" style="font-size:0.7rem;">@{{ current_user.username if current_user else '' }}</div>
+      </div>
+    </div>
+    <a href="{{ url_for('signout') }}" class="vh-nav-item"><span class="vh-ico">🚪</span> Sign Out</a>
+  </div>
+</aside>
+<div class="vh-scrim" id="vh-scrim"></div>

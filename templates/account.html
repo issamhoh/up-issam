@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+
+{% block title %}Account Profile — {{ vip_site_name }}{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/velohost.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="vh-root">
+  <div class="vh-shell">
+
+    {% set active = 'account' %}
+    {% include 'partials/vh_sidebar.html' %}
+
+    <div class="vh-main">
+      <header class="vh-topbar">
+        <div class="vh-row" style="gap:10px;">
+          <button class="vh-btn vh-btn-ghost vh-btn-sm vh-only-mobile" id="vh-menu-toggle" aria-label="Menu">☰</button>
+          <div>
+            <h1 class="vh-page-title">{{ user.full_name }}</h1>
+            <p class="vh-page-sub">Account profile, avatar and security settings</p>
+          </div>
+        </div>
+        <div class="vh-row">
+          <span class="vh-chip {% if user.status == 'active' %}vh-chip-ok vh-chip-pulse{% else %}vh-chip-warn{% endif %}">
+            <span class="vh-chip-dot"></span>{{ user.status|capitalize }}
+          </span>
+          <span class="vh-chip vh-chip-warn">🪙 <span class="user-coin-val">{{ user.coins }}</span></span>
+        </div>
+      </header>
+
+      <div class="vh-content" style="max-width:820px;">
+
+        <!-- Profile summary + avatar -->
+        <div class="vh-panel">
+          <div class="vh-panel-body">
+            <div class="vh-row" style="gap:20px;align-items:center;">
+              <label for="quick_avatar_input" style="cursor:pointer;position:relative;flex-shrink:0;display:block;" title="Click to upload a new profile picture">
+                <span class="vh-avatar" style="width:78px;height:78px;font-size:1.85rem;border:2px solid var(--vh-brand);">
+                  {% if user.avatar_url %}
+                    <img src="{{ user.avatar_url }}" alt="{{ user.full_name }}">
+                  {% else %}
+                    {{ user.full_name[0]|upper if user.full_name else (user.username[0]|upper) }}
+                  {% endif %}
+                </span>
+                <span style="position:absolute;bottom:-2px;right:-2px;width:26px;height:26px;border-radius:50%;background:var(--vh-brand-grad);color:#fff;display:flex;align-items:center;justify-content:center;font-size:0.75rem;border:2px solid var(--vh-panel);">📷</span>
+              </label>
+
+              <form id="quick_avatar_form" action="{{ url_for('account') }}" method="POST" enctype="multipart/form-data" style="display:none;">
+                <input type="hidden" name="action" value="upload_avatar">
+                <input type="file" id="quick_avatar_input" name="avatar"
+                       accept="image/png, image/jpeg, image/jpg, image/webp, image/gif, image/svg+xml">
+              </form>
+
+              <div style="flex:1;min-width:180px;">
+                <h2 class="vh-panel-title" style="font-size:1.25rem;">{{ user.full_name }}</h2>
+                <p class="vh-panel-note vh-mono" style="margin-top:2px;">@{{ user.username }} · {{ user.email }}</p>
+                <div class="vh-row" style="margin-top:10px;gap:8px;">
+                  <span class="vh-chip vh-chip-info">{{ user.role|capitalize }}</span>
+                  <span class="vh-chip">Joined {{ user.created_at|format_date if user.created_at is not string else user.created_at }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Avatar upload -->
+        <div class="vh-panel">
+          <div class="vh-panel-head">
+            <div>
+              <h2 class="vh-panel-title">🖼️ Profile Picture &amp; Logo</h2>
+              <p class="vh-panel-note">PNG, JPG, WEBP, GIF or SVG · max 5 MB</p>
+            </div>
+            {% if user.avatar_url %}<span class="vh-chip vh-chip-ok">Custom Avatar Active</span>{% endif %}
+          </div>
+          <div class="vh-panel-body">
+            <div class="vh-row" style="gap:20px;align-items:center;">
+              <div class="vh-avatar" style="width:70px;height:70px;font-size:1.7rem;flex-shrink:0;border:2px solid var(--vh-border);">
+                {% if user.avatar_url %}
+                  <img id="avatar_preview_img" src="{{ user.avatar_url }}" alt="{{ user.full_name }}">
+                {% else %}
+                  <span id="avatar_preview_letter">{{ user.full_name[0]|upper if user.full_name else (user.username[0]|upper) }}</span>
+                  <img id="avatar_preview_img" src="" alt="Preview" style="display:none;">
+                {% endif %}
+              </div>
+
+              <form action="{{ url_for('account') }}" method="POST" enctype="multipart/form-data" style="flex:1;min-width:220px;display:flex;flex-direction:column;gap:10px;">
+                <input type="hidden" name="action" value="upload_avatar">
+                <div class="vh-row" style="gap:8px;">
+                  <label class="vh-btn" style="cursor:pointer;">
+                    📁 Choose Image
+                    <input type="file" id="dedicated_avatar_input" name="avatar"
+                           accept="image/png, image/jpeg, image/jpg, image/webp, image/gif, image/svg+xml" style="display:none;">
+                  </label>
+                  <button type="submit" id="upload_avatar_submit_btn" class="vh-btn vh-btn-primary">⬆️ Upload</button>
+                </div>
+                <div id="selected_file_name" class="vh-hint">No file selected yet.</div>
+              </form>
+            </div>
+
+            {% if user.avatar_url %}
+            <hr class="vh-divider" style="margin:16px 0;">
+            <form action="{{ url_for('account') }}" method="POST" id="remove-avatar-form">
+              <input type="hidden" name="action" value="remove_avatar">
+              <button type="submit" class="vh-btn vh-btn-danger">🗑️ Remove Profile Picture</button>
+            </form>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Edit profile -->
+        <div class="vh-panel">
+          <div class="vh-panel-head">
+            <div>
+              <h2 class="vh-panel-title">✏️ Edit Profile Information</h2>
+              <p class="vh-panel-note">Display name, credentials and notes</p>
+            </div>
+          </div>
+          <div class="vh-panel-body">
+            <form action="{{ url_for('account') }}" method="POST" style="display:flex;flex-direction:column;gap:14px;">
+              <input type="hidden" name="action" value="update_profile">
+
+              <div class="vh-field">
+                <label for="full_name">Full Name</label>
+                <input type="text" id="full_name" name="full_name" class="vh-input" value="{{ user.full_name }}" required>
+                <span class="vh-hint">Shown on your servers and dashboard.</span>
+              </div>
+
+              <div class="vh-field">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" class="vh-input vh-mono" value="{{ user.username }}" required
+                       {% if user.role != 'admin' %}readonly style="opacity:0.7;cursor:not-allowed;"{% endif %}>
+              </div>
+
+              <div class="vh-field">
+                <label for="email">Gmail Address</label>
+                <input type="email" id="email" name="email" class="vh-input" value="{{ user.email }}" required
+                       {% if user.role != 'admin' %}readonly style="opacity:0.7;cursor:not-allowed;"{% endif %}>
+              </div>
+
+              <div class="vh-field">
+                <label for="bio">Bio / Notes</label>
+                <input type="text" id="bio" name="bio" class="vh-input" placeholder="Python Developer / Bot Creator" value="{{ user.bio or '' }}">
+              </div>
+
+              <div><button type="submit" class="vh-btn vh-btn-primary">💾 Save Profile Changes</button></div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Password -->
+        <div class="vh-panel">
+          <div class="vh-panel-head">
+            <div>
+              <h2 class="vh-panel-title">🔒 Change Password</h2>
+              <p class="vh-panel-note">Minimum 6 characters</p>
+            </div>
+          </div>
+          <div class="vh-panel-body">
+            <form action="{{ url_for('account') }}" method="POST" style="display:flex;flex-direction:column;gap:14px;">
+              <input type="hidden" name="action" value="change_password">
+
+              <div class="vh-field">
+                <label for="current_password">Current Password</label>
+                <input type="password" id="current_password" name="current_password" class="vh-input" required autocomplete="current-password">
+              </div>
+
+              <div class="vh-field">
+                <label for="new_password">New Password</label>
+                <input type="password" id="new_password" name="new_password" class="vh-input" required minlength="6" autocomplete="new-password">
+              </div>
+
+              <div class="vh-field">
+                <label for="confirm_new_password">Confirm New Password</label>
+                <input type="password" id="confirm_new_password" name="confirm_new_password" class="vh-input" required minlength="6" autocomplete="new-password">
+              </div>
+
+              <div><button type="submit" class="vh-btn">🔑 Update Password</button></div>
+            </form>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var sidebar = document.getElementById('vh-sidebar');
+  var scrim = document.getElementById('vh-scrim');
+  var toggle = document.getElementById('vh-menu-toggle');
+  if (toggle && sidebar) {
+    toggle.addEventListener('click', function () {
+      sidebar.classList.toggle('open');
+      if (scrim) scrim.classList.toggle('on');
+    });
+  }
+  if (scrim) {
+    scrim.addEventListener('click', function () {
+      sidebar.classList.remove('open');
+      scrim.classList.remove('on');
+    });
+  }
+
+  // Quick avatar upload
+  var quickInput = document.getElementById('quick_avatar_input');
+  var quickForm = document.getElementById('quick_avatar_form');
+  if (quickInput && quickForm) {
+    quickInput.addEventListener('change', function () {
+      if (quickInput.files && quickInput.files[0]) quickForm.submit();
+    });
+  }
+
+  // Dedicated upload with preview
+  var fileInput = document.getElementById('dedicated_avatar_input');
+  if (fileInput) {
+    fileInput.addEventListener('change', function () {
+      if (!fileInput.files || !fileInput.files[0]) return;
+      var file = fileInput.files[0];
+
+      if (file.size > 5 * 1024 * 1024) {
+        showToast('Image is larger than 5 MB.', 'danger');
+        fileInput.value = '';
+        return;
+      }
+
+      var label = document.getElementById('selected_file_name');
+      if (label) label.textContent = 'Selected: ' + file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)';
+
+      var reader = new FileReader();
+      reader.onload = function (e) {
+        var img = document.getElementById('avatar_preview_img');
+        var letter = document.getElementById('avatar_preview_letter');
+        if (img) { img.src = e.target.result; img.style.display = 'block'; }
+        if (letter) letter.style.display = 'none';
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  var removeForm = document.getElementById('remove-avatar-form');
+  if (removeForm) {
+    removeForm.addEventListener('submit', function (e) {
+      if (!confirm('Remove your profile picture and restore the default avatar?')) e.preventDefault();
+    });
+  }
+})();
+</script>
+{% endblock %}

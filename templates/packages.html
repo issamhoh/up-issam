@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}Hosting Plans — {{ vip_site_name }}{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/velohost.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="vh-root">
+  <div class="vh-shell">
+
+    {% set active = 'packages' %}
+    {% include 'partials/vh_sidebar.html' %}
+
+    <div class="vh-main">
+      <header class="vh-topbar">
+        <div class="vh-row" style="gap:10px;">
+          <button class="vh-btn vh-btn-ghost vh-btn-sm vh-only-mobile" id="vh-menu-toggle" aria-label="Menu">☰</button>
+          <div>
+            <h1 class="vh-page-title">Python Server Packages</h1>
+            <p class="vh-page-sub">Pick the hosting duration for your bots and backend services</p>
+          </div>
+        </div>
+        <div class="vh-row">
+          <span class="vh-chip vh-chip-warn">🪙 <span class="user-coin-val">{{ user.coins }}</span> Coins</span>
+          <a href="{{ url_for('coins') }}" class="vh-btn vh-btn-sm">🎁 Claim Daily</a>
+        </div>
+      </header>
+
+      <div class="vh-content">
+        <div class="vh-stats" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));">
+          <div class="vh-stat">
+            <span class="vh-stat-label">Coin Balance</span>
+            <span class="vh-stat-value user-coin-val" style="color:var(--vh-warn);">🪙 {{ user.coins }}</span>
+            <span class="vh-stat-note">Claim +10 free coins every 24h</span>
+          </div>
+          <div class="vh-stat">
+            <span class="vh-stat-label">Available Plans</span>
+            <span class="vh-stat-value">{{ packages|length }}</span>
+            <span class="vh-stat-note">Durations from {{ packages|map(attribute='days')|min if packages else 0 }} to {{ packages|map(attribute='days')|max if packages else 0 }} days</span>
+          </div>
+          <div class="vh-stat">
+            <span class="vh-stat-label">Every Plan Includes</span>
+            <span class="vh-stat-value" style="font-size:0.95rem;line-height:1.5;">Logs · ZIP · Files · 24/7</span>
+            <span class="vh-stat-note">No hidden fees</span>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:14px;">
+          {% for pkg in packages %}
+          <div class="vh-panel" style="display:flex;flex-direction:column;position:relative;">
+            {% if pkg.is_first_time_offer %}
+            <span class="vh-chip vh-chip-ok" style="position:absolute;top:12px;right:14px;">★ First Time Offer</span>
+            {% endif %}
+
+            <div class="vh-panel-body" style="display:flex;flex-direction:column;gap:12px;flex:1;">
+              <div style="padding-right:{% if pkg.is_first_time_offer %}120px{% else %}0{% endif %};">
+                <h2 class="vh-panel-title" style="font-size:1.05rem;">🐍 {{ pkg.name }}</h2>
+                <p class="vh-panel-note" style="margin-top:5px;">{{ pkg.description }}</p>
+              </div>
+
+              <div class="vh-row" style="align-items:baseline;gap:6px;background:var(--vh-panel-2);border:1px solid var(--vh-border-soft);border-radius:var(--vh-radius-sm);padding:13px;">
+                <span style="font-size:1.85rem;font-weight:800;color:var(--vh-warn);">{{ pkg.coins }}</span>
+                <span class="vh-muted" style="font-weight:700;">Coins</span>
+                <span class="vh-muted vh-mono" style="font-size:0.8rem;">/ {{ pkg.days }} days</span>
+              </div>
+
+              <ul style="list-style:none;padding:0;margin:0;font-size:0.83rem;color:var(--vh-text-2);display:flex;flex-direction:column;gap:7px;flex:1;">
+                <li>✓ <strong>{{ pkg.days }} days</strong> uptime guarantee</li>
+                <li>✓ Auto-detect Python entry files</li>
+                <li>✓ Live log streaming terminal</li>
+                <li>✓ Unlimited file storage &amp; ZIP support</li>
+                {% if pkg.is_first_time_offer %}
+                <li style="color:#FCD34D;font-weight:700;">★ One-time per account only</li>
+                {% endif %}
+              </ul>
+
+              {% if pkg.is_first_time_offer and user.first_time_offer_used %}
+              <button class="vh-btn vh-btn-block" disabled>Offer Already Claimed</button>
+              {% elif user.coins < pkg.coins %}
+              <a href="{{ url_for('coins') }}" class="vh-btn vh-btn-block" style="color:#FCD34D;border-color:rgba(245,158,11,0.4);">
+                Need {{ pkg.coins - user.coins }} More Coins
+              </a>
+              {% else %}
+              <a href="{{ url_for('create_server', pkg=pkg.id) }}" class="vh-btn vh-btn-primary vh-btn-block">Select &amp; Create →</a>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var sidebar = document.getElementById('vh-sidebar');
+  var scrim = document.getElementById('vh-scrim');
+  var toggle = document.getElementById('vh-menu-toggle');
+  if (toggle && sidebar) {
+    toggle.addEventListener('click', function () {
+      sidebar.classList.toggle('open');
+      if (scrim) scrim.classList.toggle('on');
+    });
+  }
+  if (scrim) {
+    scrim.addEventListener('click', function () {
+      sidebar.classList.remove('open');
+      scrim.classList.remove('on');
+    });
+  }
+})();
+</script>
+{% endblock %}

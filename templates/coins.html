@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+
+{% block title %}My Coins &amp; Rewards — {{ vip_site_name }}{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/velohost.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="vh-root">
+  <div class="vh-shell">
+
+    {% set active = 'coins' %}
+    {% include 'partials/vh_sidebar.html' %}
+
+    <div class="vh-main">
+      <header class="vh-topbar">
+        <div class="vh-row" style="gap:10px;">
+          <button class="vh-btn vh-btn-ghost vh-btn-sm vh-only-mobile" id="vh-menu-toggle" aria-label="Menu">☰</button>
+          <div>
+            <h1 class="vh-page-title">Coin Economy</h1>
+            <p class="vh-page-sub">Earn daily rewards and spend them on hosting durations</p>
+          </div>
+        </div>
+        <div class="vh-row">
+          <span class="vh-chip vh-chip-warn">🪙 <span class="user-coin-val">{{ current_user.coins }}</span> Balance</span>
+        </div>
+      </header>
+
+      <div class="vh-content" style="max-width:900px;">
+
+        <!-- Balance + claim -->
+        <div class="vh-panel">
+          <div class="vh-panel-body">
+            <div class="vh-row" style="justify-content:space-between;gap:16px;">
+              <div class="vh-row" style="gap:14px;">
+                <div style="width:56px;height:56px;border-radius:16px;background:rgba(245,158,11,0.14);border:1px solid rgba(245,158,11,0.4);display:flex;align-items:center;justify-content:center;font-size:1.7rem;">🪙</div>
+                <div>
+                  <span class="vh-stat-label">Available Balance</span>
+                  <div style="font-size:1.7rem;font-weight:800;letter-spacing:-0.02em;">
+                    <span class="user-coin-val" style="color:var(--vh-warn);">{{ current_user.coins }}</span> Coins
+                  </div>
+                </div>
+              </div>
+
+              {% if can_claim_daily %}
+              <button id="claim-daily-btn" class="vh-btn vh-btn-primary" style="padding:12px 22px;font-size:0.9rem;">
+                🎁 Claim +{{ daily_reward }} Daily Coins
+              </button>
+              {% else %}
+              <span class="vh-chip vh-muted" style="padding:9px 14px;text-transform:none;letter-spacing:0;">Next claim at 12:00 AM</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <!-- How it works -->
+        <div class="vh-panel">
+          <div class="vh-panel-head">
+            <div>
+              <h2 class="vh-panel-title">💡 How {{ site_name }} Coins Work</h2>
+              <p class="vh-panel-note">Three simple ways to use your balance</p>
+            </div>
+          </div>
+          <div class="vh-panel-body">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;">
+              <div style="background:var(--vh-panel-2);border:1px solid var(--vh-border-soft);border-radius:var(--vh-radius-sm);padding:13px;">
+                <div style="font-weight:700;margin-bottom:4px;">1. Daily Rewards</div>
+                <div class="vh-hint">Claim +{{ daily_reward }} free coins every 24 hours just by signing in.</div>
+              </div>
+              <div style="background:var(--vh-panel-2);border:1px solid var(--vh-border-soft);border-radius:var(--vh-radius-sm);padding:13px;">
+                <div style="font-weight:700;margin-bottom:4px;">2. Deploy Servers</div>
+                <div class="vh-hint">Run 24/7 Python bots with flexible package durations.</div>
+              </div>
+              <div style="background:var(--vh-panel-2);border:1px solid var(--vh-border-soft);border-radius:var(--vh-radius-sm);padding:13px;">
+                <div style="font-weight:700;margin-bottom:4px;">3. Extend Anytime</div>
+                <div class="vh-hint">Spend coins inside a server console to extend its expiration.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Transactions -->
+        <div class="vh-panel">
+          <div class="vh-panel-head">
+            <div>
+              <h2 class="vh-panel-title">🧾 Transaction History</h2>
+              <p class="vh-panel-note">{{ transactions|length }} record{{ '' if transactions|length == 1 else 's' }}</p>
+            </div>
+          </div>
+          <div class="vh-panel-body {% if transactions %}tight{% endif %}">
+            {% if transactions %}
+            <div class="vh-table-wrap">
+              <table class="vh-table">
+                <thead>
+                  <tr>
+                    <th>Description</th>
+                    <th>Date</th>
+                    <th style="text-align:right;">Amount</th>
+                    <th style="text-align:right;">Balance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for tx in transactions %}
+                  <tr>
+                    <td>
+                      <div class="vh-row" style="gap:10px;flex-wrap:nowrap;">
+                        <span style="width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+                                     background:{% if tx.amount > 0 %}rgba(34,197,94,0.14){% else %}rgba(239,68,68,0.14){% endif %};
+                                     border:1px solid:{% if tx.amount > 0 %}rgba(34,197,94,0.35){% else %}rgba(239,68,68,0.35){% endif %};">
+                          {% if tx.amount > 0 %}📥{% else %}📤{% endif %}
+                        </span>
+                        <span style="font-weight:600;">{{ tx.description }}</span>
+                      </div>
+                    </td>
+                    <td class="col-time">{{ tx.created_at }}</td>
+                    <td style="text-align:right;font-weight:800;color:{% if tx.amount > 0 %}var(--vh-ok){% else %}var(--vh-bad){% endif %};">
+                      {% if tx.amount > 0 %}+{{ tx.amount }}{% else %}{{ tx.amount }}{% endif %}
+                    </td>
+                    <td style="text-align:right;" class="col-time">{{ tx.balance_after }}</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            {% else %}
+            <div class="vh-empty">
+              <span class="vh-empty-ico">🧾</span>
+              <span>No transaction records yet.</span>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var sidebar = document.getElementById('vh-sidebar');
+  var scrim = document.getElementById('vh-scrim');
+  var toggle = document.getElementById('vh-menu-toggle');
+  if (toggle && sidebar) {
+    toggle.addEventListener('click', function () {
+      sidebar.classList.toggle('open');
+      if (scrim) scrim.classList.toggle('on');
+    });
+  }
+  if (scrim) {
+    scrim.addEventListener('click', function () {
+      sidebar.classList.remove('open');
+      scrim.classList.remove('on');
+    });
+  }
+
+  var claim = document.getElementById('claim-daily-btn');
+  if (claim) {
+    claim.addEventListener('click', claimDailyCoins);
+  }
+})();
+</script>
+{% endblock %}

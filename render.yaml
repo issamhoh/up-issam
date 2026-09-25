@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: hostx-vip
+    env: python
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    # Single worker is REQUIRED: the app supervises user processes with in-process
+    # background threads, and more than one worker would double-start every server.
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 120
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.10"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: APP_URL
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false

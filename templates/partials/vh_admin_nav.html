@@ -1,0 +1,22 @@
+{# Admin sub-navigation. Expects: active (string key). #}
+<div class="vh-nav-label" style="padding-top:4px;">Admin Console</div>
+<a href="{{ url_for('admin_dashboard') }}" class="vh-nav-item {% if active == 'admin_home' %}active{% endif %}"><span class="vh-ico">👑</span> Overview</a>
+{% if is_super_admin or has_admin_permission(current_user, 'manage_users') %}
+<a href="{{ url_for('admin_users') }}" class="vh-nav-item {% if active == 'admin_users' %}active{% endif %}"><span class="vh-ico">👥</span> Users</a>
+{% endif %}
+{% if is_super_admin or has_admin_permission(current_user, 'manage_coins') %}
+<a href="{{ url_for('admin_coins') }}" class="vh-nav-item {% if active == 'admin_coins' %}active{% endif %}"><span class="vh-ico">🪙</span> Coins</a>
+{% endif %}
+{% if is_super_admin or has_admin_permission(current_user, 'manage_files') %}
+<a href="{{ url_for('admin_files') }}" class="vh-nav-item {% if active == 'admin_files' %}active{% endif %}"><span class="vh-ico">📁</span> Storage</a>
+{% endif %}
+{% if is_super_admin or has_admin_permission(current_user, 'manage_announcements') %}
+<a href="{{ url_for('admin_announcements') }}" class="vh-nav-item {% if active == 'admin_announcements' %}active{% endif %}"><span class="vh-ico">📢</span> Notices</a>
+{% endif %}
+{% if is_super_admin or has_admin_permission(current_user, 'manage_broadcasts') %}
+<a href="{{ url_for('admin_broadcast') }}" class="vh-nav-item {% if active == 'admin_broadcast' %}active{% endif %}"><span class="vh-ico">⚡</span> Broadcast</a>
+{% endif %}
+{% if is_super_admin or has_admin_permission(current_user, 'manage_settings') %}
+<a href="{{ url_for('admin_settings') }}" class="vh-nav-item {% if active == 'admin_settings' %}active{% endif %}"><span class="vh-ico">⚙️</span> Settings</a>
+{% endif %}
+<a href="{{ url_for('admin_logs') }}" class="vh-nav-item {% if active == 'admin_logs' %}active{% endif %}"><span class="vh-ico">📜</span> Audit Logs</a>

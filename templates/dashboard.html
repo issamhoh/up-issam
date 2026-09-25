@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard — {{ vip_site_name }}{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/velohost.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="vh-root">
+  <div class="vh-shell">
+
+    {% set active = 'dashboard' %}
+    {% include 'partials/vh_sidebar.html' %}
+
+    <div class="vh-main">
+      <header class="vh-topbar">
+        <div class="vh-row" style="gap:10px;">
+          <button class="vh-btn vh-btn-ghost vh-btn-sm" id="vh-menu-toggle" aria-label="Menu" style="display:none;">☰</button>
+          <div>
+            <h1 class="vh-page-title">Welcome back, {{ user_first_name or current_user.username }}</h1>
+            <p class="vh-page-sub">Manage your bots, scripts and 24/7 Python processes.</p>
+          </div>
+        </div>
+        <div class="vh-row">
+          <span class="vh-chip vh-chip-ok"><span class="vh-chip-dot"></span> Engine online</span>
+          <a href="{{ url_for('create_server') }}" class="vh-btn vh-btn-primary vh-btn-sm">➕ Deploy New Server</a>
+        </div>
+      </header>
+
+      <div class="vh-content">
+
+        <!-- ===== Stats ===== -->
+        <div class="vh-stats">
+          <div class="vh-stat">
+            <span class="vh-stat-label">Active Servers</span>
+            <span class="vh-stat-value">{{ servers|length }}</span>
+            <span class="vh-stat-note">{{ servers|selectattr('status', 'equalto', 'running')|list|length }} running now</span>
+          </div>
+          <div class="vh-stat">
+            <span class="vh-stat-label">Files Stored</span>
+            <span class="vh-stat-value">{{ total_files }}</span>
+            <span class="vh-stat-note">{{ storage_formatted }} used</span>
+          </div>
+          <div class="vh-stat">
+            <span class="vh-stat-label">Coin Balance</span>
+            <span class="vh-stat-value">{{ current_user.coins }}</span>
+            <span class="vh-stat-note">+10 free every 24h</span>
+          </div>
+          <div class="vh-stat">
+            <span class="vh-stat-label">Platform</span>
+            <span class="vh-stat-value" style="color:#86EFAC;">Online</span>
+            <span class="vh-stat-note">24/7 process engine</span>
+          </div>
+        </div>
+
+        <!-- ===== Announcements ===== -->
+        {% if announcements %}
+        <div class="vh-panel">
+          <div class="vh-panel-head">
+            <div>
+              <h2 class="vh-panel-title">📢 Announcements</h2>
+              <p class="vh-panel-note">Platform news and maintenance notes</p>
+            </div>
+          </div>
+          <div class="vh-panel-body" style="display:flex;flex-direction:column;gap:10px;">
+            {% for ann in announcements %}
+            <div style="border:1px solid var(--vh-border-soft);border-radius:var(--vh-radius-sm);padding:12px 14px;background:var(--vh-panel-2);">
+              <div class="vh-row" style="gap:8px;margin-bottom:5px;">
+                {% if ann.pinned %}<span class="vh-chip vh-chip-warn">📌 Pinned</span>{% endif %}
+                {% if ann.type == 'warning' %}<span class="vh-chip vh-chip-bad">⚠ Urgent</span>
+                {% elif ann.type == 'maintenance' %}<span class="vh-chip vh-chip-info">🛠 Maintenance</span>
+                {% elif ann.type == 'info' %}<span class="vh-chip vh-chip-ok">ℹ Info</span>
+                {% else %}<span class="vh-chip vh-chip-info">🚀 Update</span>{% endif %}
+                <strong style="font-size:0.9rem;">{{ ann.title }}</strong>
+                <span class="vh-muted" style="font-size:0.72rem;margin-left:auto;">{{ ann.created_at|format_datetime }}</span>
+              </div>
+              <p class="vh-muted" style="font-size:0.84rem;line-height:1.6;white-space:pre-line;margin:0;">{{ ann.content }}</p>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- ===== Servers ===== -->
+        <div class="vh-panel">
+          <div class="vh-panel-head">
+            <div>
+              <h2 class="vh-panel-title">🖥️ My Python Servers</h2>
+              <p class="vh-panel-note">{{ servers|length }} server{{ '' if servers|length == 1 else 's' }} in your account</p>
+            </div>
+            <a href="{{ url_for('create_server') }}" class="vh-btn vh-btn-sm">+ Create</a>
+          </div>
+
+          <div class="vh-panel-body">
+            {% if servers %}
+            <div class="vh-grid-2">
+              {% for s in servers %}
+              <div style="border:1px solid var(--vh-border-soft);border-radius:var(--vh-radius-sm);padding:14px;background:var(--vh-panel-2);display:flex;flex-direction:column;gap:12px;">
+                <div class="vh-row" style="justify-content:space-between;">
+                  <div class="vh-row" style="gap:10px;min-width:0;">
+                    <span style="width:36px;height:36px;border-radius:9px;background:var(--vh-panel-3);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;">🐍</span>
+                    <div style="min-width:0;">
+                      <div class="vh-truncate" style="font-weight:800;">{{ s.name }}</div>
+                      <div class="vh-muted vh-mono" style="font-size:0.72rem;">#{{ s.id }} · {{ s.python_version }}</div>
+                    </div>
+                  </div>
+                  {% if s.status == 'running' %}
+                    <span class="vh-chip vh-chip-ok vh-chip-pulse"><span class="vh-chip-dot"></span> Running</span>
+                  {% elif s.status == 'expired' %}
+                    <span class="vh-chip vh-chip-bad"><span class="vh-chip-dot"></span> Expired</span>
+                  {% elif s.status == 'starting' %}
+                    <span class="vh-chip vh-chip-info"><span class="vh-chip-dot"></span> Starting</span>
+                  {% elif s.status == 'package_required' %}
+                    <span class="vh-chip vh-chip-warn"><span class="vh-chip-dot"></span> Packages</span>
+                  {% else %}
+                    <span class="vh-chip"><span class="vh-chip-dot"></span> Stopped</span>
+                  {% endif %}
+                </div>
+
+                <div class="vh-grid-2" style="gap:8px;font-size:0.78rem;">
+                  <div>
+                    <div class="vh-muted" style="font-size:0.68rem;text-transform:uppercase;letter-spacing:.07em;font-weight:700;">Entry file</div>
+                    <div class="vh-mono vh-truncate">{{ s.entry_file }}</div>
+                  </div>
+                  <div>
+                    <div class="vh-muted" style="font-size:0.68rem;text-transform:uppercase;letter-spacing:.07em;font-weight:700;">Expires</div>
+                    <div class="vh-truncate">{{ s.expires_at|format_datetime }}</div>
+                  </div>
+                </div>
+
+                <div class="vh-row" style="gap:7px;">
+                  <a href="{{ url_for('server_manage', server_id=s.id) }}" class="vh-btn vh-btn-sm vh-btn-primary">⚙️ Manage</a>
+                  <a href="{{ url_for('file_manager', server_id=s.id) }}" class="vh-btn vh-btn-sm">📁 Files</a>
+                  <a href="{{ url_for('server_startup', server_id=s.id) }}" class="vh-btn vh-btn-sm">⚙️ Startup</a>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+            {% else %}
+            <div class="vh-empty">
+              <span class="vh-empty-ico">🚀</span>
+              <strong>No servers yet</strong>
+              <span>You have <strong>{{ current_user.coins }}</strong> coins available. Deploy your first 24/7 Python project now.</span>
+              <a href="{{ url_for('create_server') }}" class="vh-btn vh-btn-primary" style="margin-top:6px;">+ Create Your First Server</a>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var sidebar = document.getElementById('vh-sidebar');
+  var scrim = document.getElementById('vh-scrim');
+  var toggle = document.getElementById('vh-menu-toggle');
+  if (!toggle || !sidebar) return;
+  if (window.matchMedia('(max-width: 1024px)').matches) toggle.style.display = 'inline-flex';
+  toggle.addEventListener('click', function () {
+    sidebar.classList.toggle('open');
+    if (scrim) scrim.classList.toggle('on');
+  });
+  if (scrim) {
+    scrim.addEventListener('click', function () {
+      sidebar.classList.remove('open');
+      scrim.classList.remove('on');
+    });
+  }
+})();
+</script>
+{% endblock %}

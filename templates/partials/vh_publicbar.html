@@ -1,0 +1,28 @@
+{# Dark top navigation used by the public/auth pages. The legacy .header-nav is
+   hidden on every vh-page, so signed-out visitors need their own bar. #}
+<header class="vh-publicbar">
+  <div class="vh-publicbar-inner">
+    <a href="{{ url_for('home') }}" class="vh-publicbar-brand">
+      {% if site_logo_url %}
+        <img src="{{ site_logo_url }}" alt="{{ site_name }}" style="width:30px;height:30px;border-radius:8px;object-fit:contain;"
+             onerror="this.onerror=null;this.style.display='none';">
+      {% endif %}
+      <span>{{ site_name }}</span>
+    </a>
+
+    <nav class="vh-publicbar-links">
+      <a href="{{ url_for('home') }}" class="{% if request.endpoint == 'home' %}active{% endif %}">Home</a>
+      <a href="{{ url_for('home') }}#features" class="vh-hide-sm">Features</a>
+      <a href="{{ url_for('home') }}#pricing" class="vh-hide-sm">Pricing</a>
+    </nav>
+
+    <div class="vh-publicbar-actions">
+      {% if current_user %}
+        <a href="{{ url_for('dashboard') }}" class="vh-btn vh-btn-primary vh-btn-sm">⚡ Dashboard</a>
+      {% else %}
+        <a href="{{ url_for('signin') }}" class="vh-btn vh-btn-sm vh-hide-sm">Sign In</a>
+        <a href="{{ url_for('signup') }}" class="vh-btn vh-btn-primary vh-btn-sm">Get Started</a>
+      {% endif %}
+    </div>
+  </div>
+</header>
