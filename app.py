@@ -139,9 +139,6 @@ app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=3650)
 
-DEFAULT_SITE_URL = 'http://node.panelvelohost.xyz:20018'
-APP_URL = os.environ.get('APP_URL', '').strip().rstrip('/')
-
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
 # Setup persistent storage paths if /data (Render persistent disk) is available
@@ -485,7 +482,6 @@ def init_db():
         'site_title': 'HostX VIP',
         'site_name': 'HostX',
         'vip_site_name': 'HostX VIP',
-        'site_url': APP_URL or DEFAULT_SITE_URL,
         'self_ping_enabled': '1',
         'self_ping_interval': '5'
     }
@@ -545,7 +541,6 @@ def run_self_ping_worker():
         interval_mins = 5
         detected_url = ''
         manual_url = ''
-        site_url = ''
         try:
             conn = sqlite3.connect(DB_PATH)
             conn.row_factory = sqlite3.Row
@@ -554,7 +549,6 @@ def run_self_ping_worker():
             row_interval = cursor.execute("SELECT value FROM settings WHERE key = ?", ('self_ping_interval',)).fetchone()
             row_detected = cursor.execute("SELECT value FROM settings WHERE key = ?", ('detected_site_url',)).fetchone()
             row_manual = cursor.execute("SELECT value FROM settings WHERE key = ?", ('manual_ping_url',)).fetchone()
-            row_site = cursor.execute("SELECT value FROM settings WHERE key = ?", ('site_url',)).fetchone()
             conn.close()
             if row_enabled and row_enabled['value'] == '1':
                 enabled = True
@@ -567,24 +561,17 @@ def run_self_ping_worker():
                 detected_url = row_detected['value'].strip()
             if row_manual and row_manual['value']:
                 manual_url = row_manual['value'].strip()
-            if row_site and row_site['value']:
-                site_url = row_site['value'].strip()
         except Exception as e:
             print(f"[Self-Ping Engine DB Error]: {e}", flush=True)
 
         if enabled:
-            configured_url = APP_URL or site_url
-            if configured_url:
-                urls_to_ping = [configured_url]
-            else:
-                urls_to_ping = []
-                if manual_url:
-                    urls_to_ping.append(manual_url)
-                if detected_url and detected_url not in urls_to_ping:
-                    urls_to_ping.append(detected_url)
+            urls_to_ping = []
+            if manual_url:
+                urls_to_ping.append(manual_url)
+            if detected_url and detected_url not in urls_to_ping:
+                urls_to_ping.append(detected_url)
             if not urls_to_ping:
-                port = os.environ.get('SERVER_PORT', os.environ.get('PORT', '20018'))
-                urls_to_ping.append(f"http://127.0.0.1:{port}/")
+                urls_to_ping.append("http://127.0.0.1:3000/")
 
             for u in urls_to_ping:
                 try:
@@ -816,13 +803,11 @@ def admin_permission_required(permission_name):
 def check_maintenance_and_auth():
     # Dynamic URL Auto-Detection
     try:
-        current_site_url = get_setting('site_url', '')
-        url_root = APP_URL or current_site_url
-        if not url_root:
-            url_root = request.url_root.rstrip('/')
+        url_root = request.url_root.rstrip('/')
         if url_root and "127.0.0.1" not in url_root and "localhost" not in url_root:
-            if current_site_url != url_root:
-                set_setting('site_url', url_root)
+            current_detected = get_setting('detected_site_url', '')
+            if current_detected != url_root:
+                set_setting('detected_site_url', url_root)
     except Exception:
         pass
 
@@ -4264,7 +4249,6 @@ def admin_settings():
             set_setting('self_ping_enabled', self_ping_enabled)
             set_setting('self_ping_interval', self_ping_interval)
             set_setting('manual_ping_url', manual_ping_url)
-            set_setting('site_url', APP_URL or manual_ping_url or DEFAULT_SITE_URL)
 
             log_admin_action('Updated Self-Ping Settings', 'System Settings', f"Self-Ping Enabled: {self_ping_enabled}, Interval: {self_ping_interval} mins, Manual URL: {manual_ping_url}")
             flash('Self-Ping engine configuration updated successfully!', 'success')
@@ -4280,7 +4264,7 @@ def admin_settings():
         'site_logo_url': get_setting('site_logo_url', '/static/img/logo.svg'),
         'self_ping_enabled': get_setting('self_ping_enabled', '1'),
         'self_ping_interval': get_setting('self_ping_interval', '5'),
-        'detected_site_url': get_setting('site_url', APP_URL or DEFAULT_SITE_URL),
+        'detected_site_url': get_setting('detected_site_url', ''),
         'manual_ping_url': get_setting('manual_ping_url', '')
     }
     pkg_count = db.execute("SELECT COUNT(*) FROM packages").fetchone()[0]
@@ -4491,8 +4475,8 @@ def internal_server_error(e):
     return render_template('errors/500.html'), 500
 
 if __name__ == '__main__':
-    # VeloHost / Pterodactyl sets SERVER_PORT; fallback to PORT, then 20018
-    PORT = int(os.environ.get('SERVER_PORT', os.environ.get('PORT', 20018)))
+    # VeloHost / Pterodactyl sets SERVER_PORT; fallback to PORT, then 3000
+    PORT = int(os.environ.get('SERVER_PORT', os.environ.get('PORT', 3000)))
     print("==================================================")
     print("  HOSTX VIP WHITE — PYTHON HOSTING PLATFORM       ")
     print(f"  Starting server on http://0.0.0.0:{PORT}       ")
